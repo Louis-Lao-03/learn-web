@@ -1,0 +1,24 @@
+body {
+  box-sizing: border-box;
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 18px;
+  line-height: 1.7;
+  background-color: #fdfdfc;
+  color: #222;
+}
+
+h1,
+h2 {
+  margin: 1.5rem 0 0.75rem;
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+p {
+  margin: 0 0 1rem;
+}
