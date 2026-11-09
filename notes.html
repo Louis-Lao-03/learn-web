@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>笔记检索</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav><a href="index.html">首页</a> · <a href="basics.html">基础</a> · <a href="errors.html">错误</a> · <a href="notes.html">笔记</a></nav>
+  <h1>笔记</h1>
+  <p>输入关键词，检索标题、标签和正文。</p>
+  <input id="q" type="search" placeholder="例如：PR、标题、静态站" style="width:100%;padding:0.6rem;font-size:1rem;">
+  <p id="hint">　</p>
+  <ul id="list"></ul>
+  <article id="note-body"></article>
+  <script src="notes-data.js"></script>
+  <script src="notes.js"></script>
+</body>
+</html>
