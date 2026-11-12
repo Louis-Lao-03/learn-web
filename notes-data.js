@@ -1,6 +1,14 @@
 // 自动生成，请勿手改。修改 notes/*.md 后运行 node tools/build-notes.mjs，或由 GitHub Actions 生成。
 window.NOTES = [
   {
+    "title": "怎么加一条笔记",
+    "tags": [
+      "维护"
+    ],
+    "date": "2026-11-12",
+    "body": "<p>在 <code>notes/</code> 目录下新建一个 <code>.md</code> 文件，文件名建议用英文小写加连字符，例如 <code>pr-basics.md</code>。</p>\n<p>文件开头必须有 front matter，用两行 <code>---</code> 包住：</p>\n<p>    ---<br>    title: 标题<br>    tags: 标签1, 标签2<br>    date: 2026-11-12<br>    ---</p>\n<p>下面写 Markdown 正文，支持：<code>##</code> 标题、<code>-</code> 列表、<strong>加粗</strong>、行内代码（反引号）。</p>\n<p>提交后运行 <code>node tools/build-notes.mjs</code>，索引会重新生成。</p>"
+  },
+  {
     "title": "HTML 的标题层级：h1 到 h6",
     "tags": [
       "html",
