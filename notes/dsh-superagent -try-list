@@ -1,0 +1,375 @@
+
+
+---
+title：dsh-superagent 试跑清单（Louis-Lao-03）
+tag：superagent
+date:2026-11-12
+---
+
+
+> 依据 `docs/000`–`008` 与 `SETUP.md` 的干跑结论整理。目标：用最小成本跑通一次「派活 → 接单 → 开 PR → 回到原对话」的闭环。
+> 平台结论：**官方只支持 Linux/macOS**，本机为 Windows，故走 WSL2。预计 1.5–2 小时。
+
+## 当前进度（2026-11-02）
+
+**已完成**
+
+- WSL2 + Ubuntu 26.04.1 LTS，装在 `\\wsl.localhost\Ubuntu`
+- Ubuntu 内：node v22.22.1、npm 9.2.0、pnpm 12.16.1、git 2.53、tmux 3.6a、curl
+- `@deepseek-ai/dsh@0.2.1-rc.3` 全局安装（621 包）
+- `~/dsh-superagent` 已 clone、`pnpm install`、`pnpm build` 成功（**需先 `pnpm add -D unrun`**，否则 tsdown 报 `Failed to import module "unrun"`）
+- profile `superagent` 已建，bundle 已 `link:` 进 profile
+- `~/.dsh/profiles/superagent/cordis.patch.yml` 已写（port 3082，stateDir `~/.dsh/state/superagent`）
+- 服务已跑起来，面板可访问，8 个健康条目 7 个 ready
+- 白名单已加 `Louis-Lao-03`（概览的"没有人能发起工作"已消失）
+- 仓库 `Louis-Lao-03/agent-playground` 已建（Public，含 README）
+- 两个练习 Issue 已建：#1「README 增加一节 Usage」、#2「加一个 fizzbuzz.py」（正文为中文，未 @ 任何账号）
+
+**试跑结果（2026-11-02，闭环完成）**
+
+- agent 身份 `lzs-superagent`（2FA 已开），已作为协作者（Write）加入仓库
+- 工单 1：Issue #1 → PR #3（README 末尾加 `## Usage`）→ 已合并
+- 工单 2：Issue #2 → PR #4（`fizzbuzz.py`，1–15，零依赖）→ 已合并
+- 本地验证：`python3 fizzbuzz.py` 输出 15 行，第 15 行 `FizzBuzz`，`% 15` 判断顺序正确
+- 续做验证：在 #1 追加需求后，**同一个 PR** 被更新，没有新建工单（符合订阅扇出设计）
+
+**观察与经验（比步骤更值钱）**
+
+1. **指令必须自带宾语**。发 `请按描述完成` 会被字面理解成"以 Issue 正文为准"：它把人工追加的第 4 条删了（但明确告知了原因）。改成 `请完成本 Issue 描述的任务：新增 fizzbuzz.py…` 就正常建新工单。
+2. **发错 Issue 也能被路由救回来**。把"A 单的追加需求"发到 B 单，系统仍把它路由到正确工单，消息没丢。
+3. **人的最新指令优先级高于文档**，但需要显式声明"覆盖"：说 `第 4 条是新的要求，覆盖 Issue 正文里的三行限制`，它就把第 4 条加回来了。
+4. **交付质量**：两个 PR 都只改应改的文件；PR 描述含 Summary + Verification，并声明"本仓库没有自动化检查"，没有编造测试结果；fizzbuzz 一次避开 `%15` 顺序坑。
+5. **网络**：github.com 必须走代理（直连 0/10 成功、代理 9/10）。worker 只认 `HTTPS_PROXY` 环境变量，**不读**个人 git 配置。
+
+**接一个新项目（从零到第一张 PR）**
+
+> 一个 GitHub 来源只监听**一个**仓库。接新项目 = **替换**当前项目，不是并存。
+
+| # | 做什么 | 在哪 |
+|---|---|---|
+| 1 | 建仓库（Public，勾 README） | 🌐 浏览器 |
+| 2 | 建 1–3 个 Issue，写清任务 | 🌐 浏览器 |
+| 3 | 设置 → 来源 → GitHub：填新仓库 `owner/name` + CLI 路径 → 保存 | 🌐 面板 |
+| 4 | 设置 → 执行：把准备命令里的**两处路径**改成新仓库 | 🌐 面板 |
+| 5 | `git clone` 到 `~/src/<仓库名>` | 🟦 Ubuntu |
+| 6 | 邀请 `lzs-superagent` 为协作者（Write），用它接受 | 🌐 浏览器 |
+| 7 | 在 Issue 里发**新评论**：`@lzs-superagent <带宾语的任务>` | 🌐 浏览器 |
+| 8 | 看 PR → 验收 → 合并 → 删分支 | 🌐 浏览器 |
+
+**第 4 步最容易漏**：准备命令里写死了 `-C /home/louislao/src/agent-playground`，换项目必须同步改，否则工单会卡在"准备目录"阶段，10 分钟后失败。
+
+准备命令模板（把两处 `<仓库名>` 换掉）：
+
+```sh
+git -C /home/louislao/src/<仓库名> fetch --no-tags "https://github.com/$DSH_SUPERAGENT_GITHUB_REPOSITORY.git" "${DSH_SUPERAGENT_GITHUB_PR_HEAD:-HEAD}:refs/dsh-superagent/$DSH_SUPERAGENT_TICKET" && git -C /home/louislao/src/<仓库名> worktree add -b "agent/$DSH_SUPERAGENT_NAME" "$DSH_SUPERAGENT_DIR" "refs/dsh-superagent/$DSH_SUPERAGENT_TICKET"
+```
+
+**怎么写 Issue 才跑得好**
+
+| 写法 | 结果 |
+|---|---|
+| `@agent 请按描述完成` | ❌ 没宾语，会按 Issue 正文对齐，可能反向改掉已有内容 |
+| `@agent 请完成本 Issue 描述的任务：新增 fizzbuzz.py，1-15，输出 stdout，无依赖` | ✅ 目标 + 边界都在句子里 |
+| 正文写"样式改好看点" | ❌ 没有既定标准，评估层判为方向未定，大概率被忽略 |
+| 正文写"把按钮文案从 OK 改成 Save" | ✅ 有具体替换目标 |
+
+四个要素：**改哪个文件、改成什么、不要动什么、什么算完成**。
+
+**换项目检查清单**
+
+- [ ] 面板「监听的仓库」已改
+- [ ] 准备命令里两处路径已改
+- [ ] `~/src/<新仓库>` 已 clone 成功
+- [ ] `lzs-superagent` 已在新仓库里是协作者（Write）
+- [ ] 白名单里派活人还在（换仓库不会清空，但确认一下）
+- [ ] 来源页 GitHub 显示「运行中」，概览无红字
+
+**下次启动（按情况选）**
+
+情况 A：只停了服务，电脑没重启 —— 🟦 Ubuntu：
+
+```bash
+cd ~/dsh-superagent
+source ~/.proxy_env
+scripts/dsh-superagent start
+grep -o 'http://127.0.0.1:3082[^ ]*' .artifacts/dsh-superagent-superagent-*.log | tail -1
+```
+
+情况 B：重启过电脑或 WSL —— 先确认网关 IP 有没有变：
+
+```bash
+ip route show default | awk '{print $3}'   # 现在的网关
+cat ~/.proxy_env                            # 文件里写的
+```
+
+不一致就重建代理文件，然后按情况 A 启动：
+
+```bash
+echo "export HTTPS_PROXY=\"http://$(ip route show default | awk '{print $3}'):7897\"" > ~/.proxy_env
+```
+
+验证：
+
+```bash
+scripts/dsh-superagent status
+```
+
+| 退出码 | 含义 |
+|---|---|
+| 0 | 正常运行 |
+| 3 | 在跑但在等设置（如账号失效） |
+| 2 | 在跑但某部件报错，重启修不好 |
+| 1 | 没跑起来，或跑了两份 |
+
+其它命令：
+
+```bash
+scripts/dsh-superagent stop          # 停止
+scripts/dsh-superagent restart       # 重启（会变更面板 token）
+```
+
+三个容易忘的点：
+
+1. **`source ~/.proxy_env` 不能省**——否则 GitHub 不通，工单会卡在准备目录那步（10 分钟超时失败）。
+2. **面板 token 每次重启都变**，旧链接会报 `dsh web authentication required`，用上面的 `grep` 重新捞。
+3. 装微软的东西要**关梯子**，连 GitHub 要**开梯子**，这两件事在这台机器上互斥。
+
+**踩过的坑（复现时注意）**
+
+- `wsl --install` 挂梯子会 403，**关掉梯子**再装
+- `wsl --install -d Ubuntu` 要访问 `raw.githubusercontent.com`，本网络被重置 → 改用 Microsoft Store 装 Ubuntu
+- 桌面版 DSH（Windows）与 WSL 里的 CLI 版是两套独立安装，凭证不共享
+- 面板必须用日志里带 `?token=` 的完整 URL 打开；重启后 token 会变：
+  `grep -o 'http://127.0.0.1:3082[^ ]*' .artifacts/dsh-superagent-superagent-*.log | tail -1`
+- 启动命令：`scripts/dsh-superagent start`；状态：`scripts/dsh-superagent status`
+- **WSL 访问 GitHub 只有一条路：HTTP 代理 + `HTTPS_PROXY`**。直连 0/10、TUN 对 WSL 无效、全局模式也无效（2026-11-03 实测）
+- 代理抖动表现为 `EOF`（连接被掐），不是超时；连续 3 次才报错，一次成功即清零
+- **线程键是 `github:<编号>`，不含仓库名**：换仓库会有键碰撞（旧 PR 绑定 → 新仓库 `pulls/N` 404）
+- **退订 ≠ 停止轮询**：轮询窗口按"最后一次触发/工单结束 + 两周"算，是时间条件
+- 原理与排障速查见 [superagent-concepts.md](superagent-concepts.md)
+
+## 已定的决策
+
+| 项 | 值 | 理由 |
+|---|---|---|
+| 派活人（operator） | `Louis-Lao-03`（现有账号） | 仓库主人 |
+| agent 身份 | `lzs-superagent`（新建的普通用户账号，不是 GitHub App） | 必须是独立账号，见下 |
+| 仓库（首日） | `Louis-Lao-03/agent-playground` | 玩具仓库，Public，勾 README |
+| 仓库（练习日） | `Louis-Lao-03/todo-cli` | 2026-11-03 切换，用于四条不同难度的任务 |
+| 白名单 | 仅 `Louis-Lao-03` | 首试最窄 |
+| 来源 | 仅 GitHub | 飞书另需企业应用，第一阶段跳过 |
+| accept mode | `observe`（默认） | 主动行为只记录不执行 |
+| commit 署名 | agent 账号 + noreply 邮箱 | 提交可见地属于它 |
+| auto-merge | 否 | 由人合并 |
+| 分支前缀 | `agent/` | 默认 |
+| profile / 端口 / 状态目录 | `superagent` / `3082` / `~/.dsh/state/superagent` | 默认 |
+
+### 为什么必须是独立账号（硬约束）
+
+Source 会丢弃「自己账号发出的消息」（`001` 中 *Drops the bot's own messages*；`008` 示例 `if (message.sender.id === me) return undefined`），这是防自触发的死循环保护。
+若派活人与 agent 同账号，你的 `@agent 帮我改一下` 也会被判定为「自己发的」而丢弃，**一条都收不到**。故最少两个身份。
+
+## 阶段 0：装 WSL2（需管理员，可能重启）
+
+PowerShell（管理员）：
+
+```powershell
+wsl --install -d Ubuntu
+```
+
+重启后首次启动 Ubuntu，设置 UNIX 用户名与密码。验证：
+
+```bash
+wsl -l -v          # 在 PowerShell 里
+```
+
+## 阶段 1：Ubuntu 内依赖
+
+```bash
+sudo apt update
+sudo apt install -y git tmux python3 curl ca-certificates wget
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo npm i -g pnpm
+
+# GitHub CLI
+sudo mkdir -p -m 755 /etc/apt/keyrings
+wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
+sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+sudo apt update && sudo apt install -y gh
+```
+
+自检（全部要有输出）：
+
+```bash
+node -v; pnpm -v; git --version; tmux -V; python3 --version; gh --version | head -1
+curl -sI https://github.com | head -1
+```
+
+## 阶段 2：GitHub 侧（浏览器，只有你能做）
+
+1. **新建 agent 账号** `lzs-superagent`，用你那封没注册过 GitHub 的 Gmail 验证，并开 2FA。
+   - 必须是**普通用户账号**，不能是 GitHub App —— 程序要读这个账号的通知。
+2. **新建仓库** `agent-playground`：Public，勾选 *Add a README file*。
+3. **拉协作者**：仓库 → Settings → Collaborators → 邀请 `lzs-superagent`，角色 **Write**。
+4. 用 `lzs-superagent` 登录接受邀请。
+5. **建 2 个 Issue** 当练习：
+   - Issue 1（文字，验证闭环）：标题「README 增加一节 Usage」，正文写明「在 README 末尾加一节 `## Usage`，用三行说明怎么用，其余不要改」。
+   - Issue 2（代码，验证真会写）：标题「加一个 fizzbuzz.py」，正文写明「新增 fizzbuzz.py，实现 1–15 的 FizzBuzz，输出到 stdout，不引入依赖」。
+
+## 阶段 3：安装 superagent（Ubuntu 内）
+
+```bash
+npm install -g @deepseek-ai/dsh@0.2.1-rc.3
+git clone https://github.com/deepseek-ai/dsh-superagent-prototype.git ~/dsh-superagent
+cd ~/dsh-superagent && pnpm install && pnpm build
+
+dsh superagent --from-default-profile web --dump-config > /dev/null   # 建 profile，只跑一次
+dsh plugin --profile superagent add "link:$PWD"
+```
+
+> `--from-default-profile` 会**覆盖**已有 profile 并删掉它的 `cordis.patch.yml`。只在首次建 profile 时执行；升级时不要跑。
+
+机器配置：把仓库里的 `examples/profile.cordis.patch.yml` 复制到 `~/.dsh/profiles/superagent/cordis.patch.yml`，替换其中所有 `<placeholder>`，至少要给 `stateDir` 一个绝对路径（如 `/home/<你>/.dsh/state/superagent`）。
+
+## 阶段 4：agent 的 GitHub 凭据
+
+```bash
+mkdir -p ~/.local/bin
+cat > ~/.local/bin/gh-agent <<'EOF'
+#!/bin/sh
+GH_CONFIG_DIR="$HOME/.config/gh-agent" exec gh "$@"
+EOF
+chmod +x ~/.local/bin/gh-agent
+gh-agent auth login          # 登录成 lzs-superagent
+gh-agent api user --jq .login   # 必须打印 lzs-superagent
+```
+
+## 阶段 5：启动与配置
+
+```bash
+cd ~/dsh-superagent
+scripts/dsh-superagent start
+scripts/dsh-superagent status     # 期望：最终退出码 0
+```
+
+首次启动会提示缺设置。浏览器打开日志里打印的 URL（端口 3082），按面板顺序配：
+
+1. **首次需配模型**：这是独立安装的一份 dsh，读不到桌面版的凭证，要重新登录或填 API key。
+2. **Sources**：GitHub 仓库填 `Louis-Lao-03/agent-playground`，CLI 填 `/home/<你>/.local/bin/gh-agent`。
+3. **Policy → On each Source**：白名单加 `Louis-Lao-03`。**空名单时任何请求都不会变成工单**。
+4. **Execution**：目录根 + prepare 命令（每单一个 worktree）：
+
+```sh
+git -C /home/<你>/src/agent-playground fetch --no-tags "https://github.com/$DSH_SUPERAGENT_GITHUB_REPOSITORY.git" "${DSH_SUPERAGENT_GITHUB_PR_HEAD:-HEAD}:refs/dsh-superagent/$DSH_SUPERAGENT_TICKET" &&
+git -C /home/<你>/src/agent-playground worktree add -b "agent/$DSH_SUPERAGENT_NAME" "$DSH_SUPERAGENT_DIR" "refs/dsh-superagent/$DSH_SUPERAGENT_TICKET"
+```
+
+（需先 `git clone https://github.com/Louis-Lao-03/agent-playground.git ~/src/agent-playground`）
+
+5. **Prompts → Delivery requirements**：删掉 auto-merge 段落（我们选了不启用）。
+
+## 阶段 6：试跑
+
+在 Issue 里**发一条新评论**（不要编辑已有内容，编辑 body 加 @ 不会产生通知）：
+
+```
+@lzs-superagent 请按这个 Issue 的描述完成，完成后开 PR。
+```
+
+预期：约 1 分钟内 Overview 出现工单 → 它回一条确认 → 在自己的 Session 和目录里干活 → 提 PR → 在 Issue 里报结果。
+
+## 风险与注意
+
+- **网络**：WSL 是另一套网络栈，可能与 Windows 代理不一致。先在 Ubuntu 里 `curl -sI https://github.com` 和 `npm ping` 确认通畅，否则 `pnpm install` 会失败。
+- **WSL 能读 `/mnt/c`**：agent 的进程默认能看到你 C 盘的用户目录。别把它指向含密钥的项目；它的 worker 以 `danger-full-access` 运行，wrapper 不是安全边界（`006` 明说）。
+- **成本**：每次 Eval、每个工单一个 Session，都会消耗模型 token。
+- **原型**：仓库自述为研究代码，两天前发布，别接真实项目。
+- **别在 superagent profile 里做日常对话**：它改进程级 PATH 和 git 配置，且需要独立重启。
+
+## 本地补丁
+
+我们改过源码，`git pull` 上游更新时**可能冲突**，升级前先看这一节。
+
+### 补丁 1：404 分情况判定（2026-11-04）
+
+**文件**：`src/sources/github.ts`
+**分支**：`local/fixes`（改之前建的，方便回退）
+**备份**：`src/sources/github.ts.bak`
+**脚本**：工作区的 `patch-github-404.py`（幂等校验，匹配不上就中止）
+
+**问题**：订阅线程的读取返回 404 时，代码一律算作"整轮轮询失败"（因为注释里说 404 也可能是私有仓库权限被撤）。但我们碰到的 404 是**永久性**的——线程键 `github:<编号>` 不含仓库名，换仓库后旧 PR 绑定指向新仓库里不存在的 PR。结果每轮失败、计数永不归零、概览红字常驻。
+
+**改法**（有原则，不是一律放过）：
+
+| 情况 | 判定 | 是否算失败 |
+|---|---|---|
+| 410 Gone | 对象已删除 | 否（原有行为） |
+| 404 且**仓库本身可读** | 对象真的不存在 | **否**（新行为） |
+| 404 且**仓库本身也读不到** | 多半是私有仓库权限被撤 | **是**（保留重试） |
+| EOF / 超时 | 网络真问题 | 是（不掩盖） |
+
+实现：加了一个按轮缓存的 `repositoryReadable()`（对 `GET /repos/{owner}/{repo}` 探一次），仅在 404 时使用。
+
+**回滚**：
+
+```bash
+cd ~/dsh-superagent
+cp src/sources/github.ts.bak src/sources/github.ts
+pnpm build
+```
+
+**未做的**：EOF/超时的单次重试（`src/infra/commands.ts` 的 `run()`）。要做的话必须**只对只读请求**重试（不带 `-X` / `--method` / `-f` 等写标记），否则可能重复发评论。目前先观察网络状况，必要时再做。
+
+### 升级上游时的注意事项
+
+1. 先 `git stash` 或提交本地改动，再 `git pull`
+2. 冲突大概率出现在 `pollThreads` 的 catch 与 `Round` 接口
+3. 冲突无法解决时：`git checkout -- src/sources/github.ts` 放弃补丁，接受红字噪音
+
+## 主动模式（auto）与 PR 审阅员（2026-11-04 实验）
+
+目标：让它对仓库里**新开**的 PR 自动审阅，全程无需任何 @。
+
+### 配置四步
+
+1. **来源** → 打开「接收仓库里的新 PR」。其余三个开关保持关闭——这样"未被叫到"的候选就只有 PR 一种，范围最窄。
+2. **评估 → 接单规则 → 添加一条**（模板见下）。
+3. **评估 → 接单模式 → 自动接单**。
+4. 建一个带 bug 的 PR 测试。
+
+### 规则模板（直接复用）
+
+```text
+Review a newly opened pull request in this repository. Read the diff and the PR
+description, and post ONE review comment naming concrete problems with file and
+line, ordered by severity. Do not modify files, do not push commits, do not
+merge, and do not open another pull request. If nothing is wrong, post a short
+comment naming what you checked.
+```
+
+想收窄再加一句：
+
+```text
+Skip pull requests that touch only documentation or dependency files.
+```
+
+**关键**：规则里必须写明"**不做什么**"。这次它能守住边界，靠的就是 `do not modify files` 那句——授权范围被写死了，不是靠它自觉。
+
+### 实测行为（可作基准）
+
+| 观察点 | 结果 |
+|---|---|
+| 规则判定 | 三条启用规则**逐条**给结论，不匹配的两条也写了具体理由 |
+| 授权强度 | `推断`（名单内、未 @），命中规则 `PR review` |
+| 边界 | PR 的 commit 数保持 1，没开新 PR，只留了评论 |
+| 质量 | 指出 `load()[:-1]` 丢最后一条（并跑代码验证）；指出函数定义在 `__main__` 守卫之后会导致运行时 `NameError` |
+
+### 出现这些就切回「仅观察」
+
+- 对不该接的 PR 也接（纯文档、依赖更新）
+- 开始改文件 / push / 自己开 PR
+- 每个 PR 消耗一个 Session，注意 token 成本
+
+**回退**：评估 → 接单模式 → 仅观察。已接的工单不受影响。
