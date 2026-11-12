@@ -1,12 +1,8 @@
-
-
 ---
 title：dsh-superagent 试跑清单（Louis-Lao-03）
 tag：superagent
 date:2026-11-12
 ---
-
-
 > 依据 `docs/000`–`008` 与 `SETUP.md` 的干跑结论整理。目标：用最小成本跑通一次「派活 → 接单 → 开 PR → 回到原对话」的闭环。
 > 平台结论：**官方只支持 Linux/macOS**，本机为 Windows，故走 WSL2。预计 1.5–2 小时。
 
