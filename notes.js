@@ -17,12 +17,9 @@ function show(note) {
   const meta = document.createElement('p')
   meta.textContent = `${note.date} · ${(note.tags || []).join('、')}`
   viewer.appendChild(meta)
-  // 正文按空行分段，不依赖任何 markdown 库，保证离线可用。
-  for (const paragraph of note.body.split('\n\n')) {
-    const p = document.createElement('p')
-    p.textContent = paragraph
-    viewer.appendChild(p)
-  }
+  const content = document.createElement('div')
+  content.innerHTML = note.body
+  viewer.appendChild(content)
 }
 
 function render(items) {
